@@ -49,6 +49,15 @@ export default {
     const files = ref([])
     const loading = ref(false)
 
+    // 预加载 OnlyOffice 脚本（用户进入首页就开始加载，点击编辑时已完成）
+    const preloadOnlyOffice = () => {
+      const script = document.createElement('script')
+      script.src = '/onlyoffice/web-apps/apps/api/documents/api.js'
+      script.async = true
+      document.head.appendChild(script)
+      console.log('OnlyOffice 脚本预加载启动')
+    }
+
     const loadFiles = async () => {
       loading.value = true
       try {
@@ -122,6 +131,7 @@ export default {
 
     onMounted(() => {
       loadFiles()
+      preloadOnlyOffice() // 预加载 OnlyOffice 脚本
     })
 
     return {

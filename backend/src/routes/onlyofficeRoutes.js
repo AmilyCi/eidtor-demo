@@ -1,6 +1,6 @@
 import express from 'express';
 import axios from 'axios';
-import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import {
   readFileContent,
@@ -11,13 +11,15 @@ import {
 
 const router = express.Router();
 
-// OnlyOffice JWT 密钥 - 必须从环境变量获取
-const JWT_SECRET = process.env.ONLYOFFICE_SECRET;
+// OnlyOffice JWT 密钥 - 开发环境使用默认值，生产环境必须使用环境变量
+const JWT_SECRET = process.env.ONLYOFFICE_SECRET || 'sLxraNbqwPx5i5ys6fd88FqG1wD5FOCH';
 
-// 警告：如果未设置密钥
-if (!JWT_SECRET) {
-  console.warn('⚠️  警告：ONLYOFFICE_SECRET 未设置！请使用环境变量设置密钥。');
-  console.warn('生成随机密钥命令：openssl rand -hex 32');
+// 警告：如果使用的是默认密钥
+if (process.env.ONLYOFFICE_SECRET) {
+  console.log('✓ OnlyOffice JWT 密钥已配置');
+} else {
+  console.warn('⚠️  警告：ONLYOFFICE_SECRET 未设置，使用默认密钥（仅限开发环境）');
+  console.warn('生产环境请设置环境变量：export ONLYOFFICE_SECRET=$(openssl rand -hex 32)');
 }
 
 // 存储文档编辑会话
@@ -31,6 +33,15 @@ function generateJwtToken(payload) {
 }
 
 /**
+ * 生成文档 key（同一文件名使用相同的 key 以支持协作编辑）
+ */
+function generateDocumentKey(filename) {
+  // 使用文件名的 hash 作为 document key，确保同一文件始终是相同的 key
+  // OnlyOffice 通过这个 key 来识别是否是同一个文档进行协作
+  return crypto.createHash('md5').update(filename).digest('hex');
+}
+
+/**
  * 获取编辑器配置
  */
 router.post('/editor', (req, res) => {
@@ -41,10 +52,12 @@ router.post('/editor', (req, res) => {
       return res.status(400).json({ error: '文件名不能为空' });
     }
 
-    const documentId = uuidv4();
+    // 使用文件名生成固定的 document key（支持多人协作）
+    const documentId = generateDocumentKey(filename);
+    const sessionKey = `${documentId}-${Date.now()}`;
 
     // 创建编辑会话
-    editorSessions.set(documentId, {
+    editorSessions.set(sessionKey, {
       filename,
       user: user || { id: 'user-1', name: '用户' },
       createdAt: new Date()
