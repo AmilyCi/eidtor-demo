@@ -4,12 +4,13 @@
       <div class="loading-spinner"></div>
       <p>正在加载编辑器，请稍候...</p>
       <p class="loading-tip">首次加载可能需要 10-30 秒，后续访问会更快</p>
+      <p class="loading-progress">{{ progressMessage }}</p>
     </div>
-    <div v-else-if="error" class="error">
+    <div v-if="error" class="error">
       <p>{{ error }}</p>
       <button class="btn" @click="goBack">返回</button>
     </div>
-    <div v-else id="editor" class="editor"></div>
+    <div id="editor"></div>
   </div>
 </template>
 
@@ -28,7 +29,9 @@ export default {
     const router = useRouter()
     const loading = ref(true)
     const error = ref(null)
+    const progressMessage = ref('初始化中...')
     let docEditor = null
+    let progressTimer = null
 
     const filename = route.params.filename
     console.log('原始文件名:', filename)
@@ -71,6 +74,11 @@ export default {
         // 预加载脚本（后台进行）
         preloadOnlyOfficeScript(proxyEditorUrl)
 
+        // 进度提示
+        progressTimer = setInterval(() => {
+          progressMessage.value = '正在加载编辑器资源...'
+        }, 5000)
+
         // 获取编辑器配置
         const res = await onlyofficeApi.getEditorConfig(decodedFilename, {
           id: 'CX',
@@ -88,6 +96,8 @@ export default {
           'onError': (event) => {
             console.error('编辑器错误:', event)
             error.value = '编辑器发生错误：' + JSON.stringify(event)
+            loading.value = false
+            if (progressTimer) clearInterval(progressTimer)
           },
           'onRequestClose': () => {
             console.log('编辑器请求关闭')
@@ -101,13 +111,23 @@ export default {
           'onAppReady': () => {
             console.log('OnlyOffice App 就绪')
             loading.value = false
+            if (progressTimer) clearInterval(progressTimer)
           },
           'onInfo': (event) => {
             console.log('OnlyOffice 信息:', event)
+          },
+          'onLoadComponent': (event) => {
+            console.log('组件加载:', event)
+            progressMessage.value = '加载编辑器组件...'
           }
         }
 
-        // 确保容器元素存在
+        // 等待脚本加载完成
+        await docsApiPromise
+        progressMessage.value = '脚本加载完成，正在初始化编辑器...'
+
+        // 确保容器元素存在（等待 Vue 渲染完成）
+        await nextTick()
         const container = document.getElementById('editor')
         console.log('编辑器容器:', container)
 
@@ -115,12 +135,10 @@ export default {
           throw new Error('编辑器容器未找到')
         }
 
-        // 等待脚本加载完成
-        await docsApiPromise
-
         // 创建编辑器实例
         if (window.DocsAPI && window.DocsAPI.DocEditor) {
           console.log('开始创建编辑器...')
+          progressMessage.value = '正在创建编辑器实例...'
           docEditor = new window.DocsAPI.DocEditor('editor', config)
           console.log('编辑器已创建', docEditor)
 
@@ -131,8 +149,9 @@ export default {
               console.warn('编辑器加载超时，检查 OnlyOffice 服务')
               error.value = '编辑器加载超时，请检查 OnlyOffice 服务是否正常运行'
               loading.value = false
+              if (progressTimer) clearInterval(progressTimer)
             }
-          }, 15000)
+          }, 30000)
 
           // 检查 DOM 变化
           if (container) {
@@ -140,6 +159,7 @@ export default {
               const iframe = document.querySelector('#editor iframe')
               if (iframe) {
                 console.log('iframe 已创建:', iframe.src)
+                progressMessage.value = '编辑器即将就绪...'
                 clearTimeout(loadTimeout)
                 observer.disconnect()
               }
@@ -154,6 +174,7 @@ export default {
         console.error('加载编辑器失败:', err)
         loading.value = false
         error.value = '加载编辑器失败：' + err.message
+        if (progressTimer) clearInterval(progressTimer)
       }
     }
 
@@ -168,6 +189,9 @@ export default {
     onBeforeUnmount(() => {
       if (docEditor) {
         docEditor.destroyEditor()
+      }
+      if (progressTimer) {
+        clearInterval(progressTimer)
       }
     })
 
@@ -220,6 +244,12 @@ export default {
   color: #666;
 }
 
+.loading-progress {
+  font-size: 0.75rem;
+  color: #999;
+  margin-top: 0.5rem;
+}
+
 .error {
   color: #dc3545;
 }
@@ -227,6 +257,20 @@ export default {
 .editor {
   width: 100%;
   height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* loading 时遮挡编辑器 */
+.loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: white;
+  z-index: 10;
 }
 
 .btn {
