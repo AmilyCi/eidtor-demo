@@ -1,0 +1,21 @@
+# 依赖
+node_modules/
+
+# 环境文件（但保留 .env.example）
+.env
+!.env.example
+*.env
+
+# 文件存储目录
+files/
+
+# 日志
+*.log
+npm-debug.log*
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
