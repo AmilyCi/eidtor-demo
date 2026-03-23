@@ -5,7 +5,7 @@ import fileRoutes from './routes/fileRoutes.js';
 import onlyofficeRoutes from './routes/onlyofficeRoutes.js';
 import { initStorage } from './utils/storage.js';
 
-dotenv.config();
+dotenv.config(); 
 
 const app = express();
 const PORT = process.env.PORT || 3000;
