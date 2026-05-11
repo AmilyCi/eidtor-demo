@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>AI 写作助手</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 20px;
+            margin: 0;
+            background: #fafafa;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            align-items: center;
+            justify-content: center;
+            min-height: 200px;
+            text-align: center;
+        }
+        .icon {
+            width: 64px;
+            height: 64px;
+            opacity: 0.5;
+        }
+        h3 {
+            margin: 0;
+            color: #666;
+            font-size: 14px;
+            font-weight: normal;
+        }
+        .status {
+            font-size: 13px;
+            color: #999;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <svg class="icon" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="24" cy="14" r="6" fill="#446e96"/>
+            <path d="M24 20c-8.8 0-16 7.2-16 16v4h32v-4c0-8.8-7.2-16-16-16z" fill="#446e96"/>
+            <line x1="24" y1="40" x2="24" y2="46" stroke="#446e96" stroke-width="3" stroke-linecap="round"/>
+            <line x1="18" y1="46" x2="30" y2="46" stroke="#446e96" stroke-width="3" stroke-linecap="round"/>
+        </svg>
+        <h3>AI 写作助手</h3>
+        <div class="status" id="status">请在右侧面板中使用</div>
+    </div>
+
+    <script>
+        // 插件加载完成
+        function pluginLoaded() {
+            console.log('[Plugin] AI Stream 插件已加载');
+            console.log('[Plugin] window.Asc:', window.Asc);
+            if (window.Asc && window.Asc.plugin) {
+                console.log('[Plugin] Asc.plugin 可用');
+                window.Asc.plugin.resizeWindow(300, 200);
+            }
+        }
+
+        /**
+         * 插入文本到 OnlyOffice 文档
+         * 使用 OnlyOffice 插件 API
+         */
+        function insertTextToDocument(text) {
+            console.log('[Plugin] 准备插入文本:', text);
+            try {
+                if (window.Asc && window.Asc.plugin) {
+                    console.log('[Plugin] Asc.plugin 可用，executeMethod:', typeof window.Asc.plugin.executeMethod);
+                    if (window.Asc.plugin.executeMethod) {
+                        window.Asc.plugin.executeMethod('PasteText', [text]);
+                        console.log('[Plugin] 已使用 PasteText 插入:', text);
+                    } else if (window.Asc.plugin.executeCommand) {
+                        window.Asc.plugin.executeCommand('insertText', text);
+                        console.log('[Plugin] 已使用 executeCommand 插入:', text);
+                    } else {
+                        console.error('[Plugin] 没有可用的插入方法');
+                    }
+                } else {
+                    console.warn('[Plugin] window.Asc 或 Asc.plugin 不可用');
+                }
+            } catch (err) {
+                console.error('[Plugin] 插入文本失败:', err);
+            }
+        }
+
+        // 监听来自 Vue 面板的消息
+        window.addEventListener('message', function(event) {
+            console.log('插件初始化完成~~~~~~~~~~~~~~~~~~~')
+            console.log('[Plugin] 收到 message:', event.data, 'origin:', event.origin);
+
+            if (event.data && event.data.type === 'insertText') {
+                console.log('[Plugin] 处理 insertText 消息，text:', event.data.text);
+                insertTextToDocument(event.data.text);
+                document.getElementById('status').textContent = '正在插入内容...';
+            } else if (event.data && event.data.type === 'done') {
+                document.getElementById('status').textContent = '插入完成！';
+            }
+        });
+
+        // 页面加载完成后
+        window.addEventListener('load', function() {
+            console.log('[Plugin] 插件页面加载完成');
+            pluginLoaded();
+        });
+    </script>
+</body>
+</html>

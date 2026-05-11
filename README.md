@@ -1,28 +1,36 @@
-# OnlyOffice 集成项目
+# OnlyOffice 在线协作编辑系统
 
-基于 Node.js + Vue3 的 OnlyOffice 文档编辑器在线协作编辑解决方案。
+基于 Node.js + Vue3 的 OnlyOffice 文档编辑器在线协作解决方案，支持 AI 流式写作功能。
 
 ## 项目结构
 
 ```
 .
-├── backend/          # 后端服务 (Express)
+├── backend/                    # 后端服务 (Express)
 │   ├── src/
-│   │   ├── index.js              # 入口文件
+│   │   ├── index.js            # 入口文件
 │   │   └── routes/
-│   │       ├── fileRoutes.js     # 文件管理 API
+│   │       ├── fileRoutes.js   # 文件管理 API
 │   │       └── onlyofficeRoutes.js # OnlyOffice API
-│   └── utils/
-│       └── storage.js            # 文件存储工具
-└── frontend/         # 前端应用 (Vue3 + Vite)
+│   ├── utils/
+│   │   └── storage.js          # 文件存储工具
+│   └── plugin/
+│       └── stream-plugin/      # AI 流式写作插件
+│           ├── config.json     # 插件配置
+│           ├── index.html      # 插件 UI
+│           ├── code.js         # 插件逻辑
+│           └── icon.svg        # 插件图标
+└── frontend/                   # 前端应用 (Vue3 + Vite)
     └── src/
-        ├── main.js               # 入口文件
-        ├── App.vue               # 根组件
-        ├── router.js             # 路由配置
-        ├── api.js                # API 封装
+        ├── main.js             # 入口文件
+        ├── App.vue             # 根组件
+        ├── router.js           # 路由配置
+        ├── api.js              # API 封装
+        ├── components/
+        │   └── AIStreamPanel.vue # AI 流式写作面板
         └── views/
-            ├── Home.vue          # 首页（文件列表）
-            └── Editor.vue        # 编辑器页面
+            ├── Home.vue        # 首页（文件列表）
+            └── Editor.vue      # 编辑器页面
 ```
 
 ## 快速启动
@@ -76,12 +84,19 @@ npm run dev
 
 ## 功能特性
 
+### 文档编辑
 - 📁 文件上传/下载/删除
 - 📝 在线编辑 Word 文档 (.doc, .docx)
 - 📊 在线编辑 Excel 表格 (.xls, .xlsx)
 - 📽 在线编辑 PPT 演示文稿 (.ppt, .pptx)
 - 💾 自动保存功能
 - 👥 多用户协作编辑支持
+
+### AI 流式写作
+- 🤖 AI 辅助写作功能
+- ⌨️ 打字机效果逐字插入
+- 📊 实时进度显示
+- 🎯 右侧面板操作，不影响编辑
 
 ## API 接口
 
@@ -103,6 +118,12 @@ npm run dev
 | POST | /api/onlyoffice/callback | OnlyOffice 回调保存 |
 | GET | /api/onlyoffice/files | 获取可编辑文件列表 |
 
+### AI 流式写作
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | /api/stream/generate?prompt=xxx | SSE 流式生成内容 |
+
 ## 配置说明
 
 ### 后端环境变量
@@ -117,7 +138,34 @@ npm run dev
 
 ### 前端配置
 
-修改 `frontend/vite.config.js` 中的代理配置。
+修改 `frontend/vite.config.js` 中的代理配置：
+
+```javascript
+server: {
+  port: 8081,
+  proxy: {
+    '/api': {
+      target: 'http://localhost:3000',
+      changeOrigin: true
+    },
+    '/onlyoffice': {
+      target: 'http://localhost:8080',
+      changeOrigin: true,
+      rewrite: (path) => path.replace(/^\/onlyoffice/, '')
+    }
+  }
+}
+```
+
+## AI 流式写作使用说明
+
+1. 在文件列表页点击要编辑的文档
+2. 进入编辑器后，点击右上角的「AI 写作」按钮
+3. 在右侧面板中输入提示词，如：
+   - 写一篇关于人工智能的科普文章
+   - 生成一份产品需求文档模板
+   - 写一封商务邮件
+4. 点击「开始生成」，内容将以打字机效果逐字插入到编辑器中
 
 ## 安全提示
 
@@ -133,9 +181,10 @@ npm run dev
 - Express.js
 - Multer（文件上传）
 - jsonwebtoken（JWT 认证）
+- SSE（Server-Sent Events 流式传输）
 
 **前端**
-- Vue 3
+- Vue 3 (Composition API)
 - Vite
 - Vue Router
 - Axios
@@ -150,6 +199,14 @@ npm run dev
 2. 文件存储在 `backend/files` 目录下
 3. 首次加载编辑器可能需要几秒钟下载 OnlyOffice 资源
 4. 使用 Docker 部署时，确保 `APP_URL` 配置正确以便 OnlyOffice 能够回调
+5. AI 流式写作功能目前使用 Mock 数据，后续可对接真实 AI API
+
+## 开发计划
+
+- [ ] 对接真实 AI API（如 Claude、ChatGPT）
+- [ ] 支持多种写作模板
+- [ ] 支持文档大纲生成
+- [ ] 支持智能续写和改写
 
 ## License
 

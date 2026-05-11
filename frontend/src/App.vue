@@ -44,8 +44,8 @@ body {
 }
 
 .main {
-  padding: 2rem;
-  max-width: 1400px;
+  /* padding: 2rem;
+  max-width: 1400px; */
   margin: 0 auto;
 }
 </style>

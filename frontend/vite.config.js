@@ -1,8 +1,14 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import path from 'path'
 
 export default defineConfig({
   plugins: [vue()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, 'src')
+    }
+  },
   server: {
     port: 8081,
     proxy: {
@@ -13,7 +19,8 @@ export default defineConfig({
       '/onlyoffice': {
         target: 'http://localhost:8080',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/onlyoffice/, '')
+        rewrite: (path) => path.replace(/^\/onlyoffice/, ''),
+        ws: true
       },
       '/web-apps': {
         target: 'http://localhost:8080',
@@ -26,6 +33,16 @@ export default defineConfig({
       '/cache': {
         target: 'http://localhost:8080',
         changeOrigin: true
+      }
+    }
+  },
+  // 插件静态文件服务 - 由前端 Vite 提供
+  publicDir: 'public',
+  build: {
+    outDir: 'dist',
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html')
       }
     }
   }

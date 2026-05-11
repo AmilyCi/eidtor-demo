@@ -1,152 +1,34 @@
+/**
+ * OnlyOffice 路由 - 简化版
+ * 只提供文件内容和回调接口
+ * 配置生成在前端完成
+ */
+
 import express from 'express';
 import axios from 'axios';
-import crypto from 'crypto';
-import jwt from 'jsonwebtoken';
 import {
-  readFileContent,
   saveFile,
-  listFiles,
-  getDocumentType
+  listFiles
 } from '../utils/storage.js';
 
 const router = express.Router();
 
-// OnlyOffice JWT 密钥 - 开发环境使用默认值，生产环境必须使用环境变量
-const JWT_SECRET = process.env.ONLYOFFICE_SECRET || 'sLxraNbqwPx5i5ys6fd88FqG1wD5FOCH';
-
-// 警告：如果使用的是默认密钥
-if (process.env.ONLYOFFICE_SECRET) {
-  console.log('✓ OnlyOffice JWT 密钥已配置');
-} else {
-  console.warn('⚠️  警告：ONLYOFFICE_SECRET 未设置，使用默认密钥（仅限开发环境）');
-  console.warn('生产环境请设置环境变量：export ONLYOFFICE_SECRET=$(openssl rand -hex 32)');
-}
-
-// 存储文档编辑会话
-const editorSessions = new Map();
-
 /**
- * 生成 OnlyOffice JWT token
+ * 获取可编辑的文件列表
  */
-function generateJwtToken(payload) {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
-}
-
-/**
- * 生成文档 key（同一文件名使用相同的 key 以支持协作编辑）
- */
-function generateDocumentKey(filename) {
-  // 使用文件名的 hash 作为 document key，确保同一文件始终是相同的 key
-  // OnlyOffice 通过这个 key 来识别是否是同一个文档进行协作
-  return crypto.createHash('md5').update(filename).digest('hex');
-}
-
-/**
- * 获取编辑器配置
- */
-router.post('/editor', (req, res) => {
+router.get('/files', (_, res) => {
   try {
-    const { filename, user } = req.body;
-
-    if (!filename) {
-      return res.status(400).json({ error: '文件名不能为空' });
-    }
-
-    // 使用文件名生成固定的 document key（支持多人协作）
-    const documentId = generateDocumentKey(filename);
-    const sessionKey = `${documentId}-${Date.now()}`;
-
-    // 创建编辑会话
-    editorSessions.set(sessionKey, {
-      filename,
-      user: user || { id: 'user-1', name: '用户' },
-      createdAt: new Date()
+    const files = listFiles();
+    const editableFiles = files.filter(file => {
+      const ext = '.' + file.name.split('.').pop().toLowerCase();
+      const editableExts = ['.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.csv'];
+      return editableExts.includes(ext);
     });
 
-    // OnlyOffice 文档服务器 URL
-    const onlyofficeUrl = process.env.ONLYOFFICE_URL || 'http://localhost:8080';
-
-    // 后端服务 URL（OnlyOffice 回调用）
-    const appUrl = process.env.APP_URL || 'http://localhost:3000';
-
-    // 文档信息
-    const docType = filename.split('.').pop() || 'docx';
-
-    // 用于 JWT token 和配置对象的完整文档信息
-    const documentInfo = {
-      fileType: docType,
-      key: documentId,
-      title: filename,
-      encoding: 'UTF-8',
-      url: `${appUrl}/api/files/content/${encodeURIComponent(filename)}`,
-      encoding: 'UTF-8',
-      permissions: {
-        comment: true,
-        copy: true,
-        download: true,
-        edit: true,
-        fillForms: true,
-        modifyContentControl: true,
-        modifyFilter: true,
-        print: true,
-        review: true
-      }
-    };
-
-    // 用于 JWT token 和配置对象的完整编辑器配置
-    const editorInfo = {
-      mode: 'edit',
-      lang: 'zh-CN',
-      user: user || {
-        id: 'user-1',
-        name: '用户'
-      },
-      customization: {
-        autosave: true,
-        forcesave: true,
-        hideTxtOptions: true,
-        hideRightMenu: true
-      },
-      callbackUrl: `${appUrl}/api/onlyoffice/callback?filename=${encodeURIComponent(filename)}`,
-      // TXT 文件编码选项，避免打开时弹出编码选择框
-      txtOptions: {
-        encoding: 'UTF-8'
-      }
-    };
-
-    // 生成 JWT token (OnlyOffice 9.x 需要)
-    // Token 包含完整的 document 和 editorConfig
-    const tokenPayload = {
-      document: documentInfo,
-      editorConfig: editorInfo
-    };
-
-    const token = generateJwtToken(tokenPayload);
-
-    console.log('Token payload:', JSON.stringify(tokenPayload, null, 2));
-
-    // 构建配置对象 - 与 token 中的内容完全一致
-    const config = {
-      type: 'desktop',
-      token,
-      document: documentInfo,
-      editorConfig: editorInfo,
-      height: '100%',
-      width: '100%'
-    };
-
-    console.log('配置对象:', JSON.stringify(config, null, 2));
-    console.log('Token (前 50 字符):', token.substring(0, 50) + '...');
-
-    res.json({
-      success: true,
-      documentId,
-      editorUrl: `${onlyofficeUrl}/web-apps/apps/api/documents/api.js`,
-      config
-    });
+    res.json({ success: true, files: editableFiles });
   } catch (error) {
-    console.error('获取编辑器配置失败:', error);
-    res.status(500).json({ error: '获取编辑器配置失败' });
+    console.error('获取文件列表失败:', error);
+    res.status(500).json({ error: '获取文件列表失败' });
   }
 });
 
@@ -187,39 +69,6 @@ router.post('/callback', async (req, res) => {
   } catch (error) {
     console.error('处理回调失败:', error);
     res.status(500).json({ error: 1 });
-  }
-});
-
-/**
- * 获取文档会话信息
- */
-router.get('/session/:documentId', (req, res) => {
-  const { documentId } = req.params;
-  const session = editorSessions.get(documentId);
-
-  if (!session) {
-    return res.status(404).json({ error: '会话不存在' });
-  }
-
-  res.json({ success: true, session });
-});
-
-/**
- * 获取可编辑的文件列表
- */
-router.get('/files', (req, res) => {
-  try {
-    const files = listFiles();
-    const editableFiles = files.filter(file => {
-      const ext = '.' + file.name.split('.').pop().toLowerCase();
-      const editableExts = ['.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.csv'];
-      return editableExts.includes(ext);
-    });
-
-    res.json({ success: true, files: editableFiles });
-  } catch (error) {
-    console.error('获取文件列表失败:', error);
-    res.status(500).json({ error: '获取文件列表失败' });
   }
 });
 

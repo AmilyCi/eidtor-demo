@@ -1,0 +1,64 @@
+{
+  "name": "AI Stream Generator",
+  "nameLocale": {
+    "zh-CN": "AI 写作助手",
+    "en-US": "AI Stream Generator"
+  },
+  "guid": "asc.{ea8a3b8e-8f3a-4c8e-9c3e-1a2b3c4d5e6f}",
+  "version": "1.0.0",
+  "category": "content",
+  "author": {
+    "name": "Developer",
+    "email": "dev@example.com",
+    "url": "https://example.com"
+  },
+  "description": "AI 流式生成文本内容并插入到文档",
+  "descriptionLocale": {
+    "zh-CN": "AI 流式生成文本内容并插入到文档",
+    "en-US": "AI stream generate text content and insert into document"
+  },
+  "website": "https://example.com",
+  "baseUrl": "",
+  "icons": [
+    "icon.svg"
+  ],
+  "icons2": [
+    {
+      "style": "light",
+      "100%": {
+        "normal": "icon.svg"
+      }
+    }
+  ],
+  "isViewerPlugin": false,
+  "EditorsSupport": ["word", "cell", "slide"],
+  "isVisual": true,
+  "hideClose": false,
+  "width": 300,
+  "height": 200,
+  "initOnSelectionChanged": false,
+  "events": {
+    "onClick": "executePlugin"
+  },
+  "isDisplayedInViewer": false,
+  "store": false,
+  "variations": [
+    {
+      "caption": "AI 写作",
+      "captionLocale": {
+        "zh-CN": "AI 写作",
+        "en-US": "AI Writing"
+      },
+      "description": "AI 流式生成文本内容",
+      "descriptionLocale": {
+        "zh-CN": "AI 流式生成文本内容",
+        "en-US": "AI stream generate text content"
+      },
+      "url": "index.html",
+      "isViewer": false,
+      "icons": [
+        "icon.svg"
+      ]
+    }
+  ]
+}
